@@ -1,3 +1,4 @@
+// lib/widgets/menu_bar.dart (updated)
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:my_app/app/app_routes.dart';
@@ -5,8 +6,15 @@ import 'package:my_app/utils/constants.dart';
 
 class MenuBar extends StatefulWidget {
   final Function(String) onMenuSelect;
+  final Function(Map<String, dynamic>)? onNotificationTap;
+  final Function(String)? onSettingsAction;
 
-  const MenuBar({super.key, required this.onMenuSelect});
+  const MenuBar({
+    super.key,
+    required this.onMenuSelect,
+    this.onNotificationTap,
+    this.onSettingsAction,
+  });
 
   @override
   State<MenuBar> createState() => _MenuBarState();
@@ -145,7 +153,6 @@ class _MenuBarState extends State<MenuBar> {
                               _doHideOverlay(title);
                             },
                             onHover: (hovering) {
-                              // Cancel hide timer when hovering menu items
                               if (hovering) _cancelHideOverlay(title);
                             },
                             child: Container(
@@ -585,30 +592,50 @@ class _MenuBarState extends State<MenuBar> {
 
   void _showNotificationDetails(Map<String, dynamic> notification) {
     _hideNotificationsOverlay();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(notification['title']),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(notification['message']),
-            const SizedBox(height: 16),
-            Text(
-              'Time: ${notification['time']}',
-              style: const TextStyle(color: Colors.grey),
+
+    // Use callback if provided
+    if (widget.onNotificationTap != null) {
+      widget.onNotificationTap!(notification);
+    } else {
+      // Fallback to dialog
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(notification['title']),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(notification['message']),
+              const SizedBox(height: 16),
+              Text(
+                'Time: ${notification['time']}',
+                style: const TextStyle(color: Colors.grey),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
+      );
+    }
+  }
+
+  // Update settings action handlers
+  void _handleSettingsItemTap(Map<String, dynamic> item) {
+    _hideSettingsOverlay();
+
+    // Use callback if provided
+    if (widget.onSettingsAction != null) {
+      widget.onSettingsAction!(item['route'] as String);
+    } else {
+      // Fallback to navigation
+      widget.onMenuSelect(item['route'] as String);
+    }
   }
 
   void _showNotificationActions(int id) {

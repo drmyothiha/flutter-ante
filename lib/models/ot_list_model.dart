@@ -85,6 +85,30 @@ class OtAppointment {
     this.location,
   });
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'resourceType': resourceType,
+      'status': status,
+      'start': start.toIso8601String(),
+      'end': end.toIso8601String(),
+      'patientName': patientName,
+      'doctorName': doctorName,
+      'diagnosis': diagnosis,
+      'procedureCode': procedureCode,
+      'participants': participants
+          .map(
+            (p) => {
+              'actor': {'reference': p.reference, 'display': p.display},
+              'status': p.status,
+              'required': p.required,
+            },
+          )
+          .toList(),
+      'created_at': createdAt.toIso8601String(),
+    };
+  }
+
   factory OtAppointment.fromJson(Map<String, dynamic> json) {
     // Extract location from participants
     String? location;
@@ -99,8 +123,9 @@ class OtAppointment {
       id: json['id'] ?? '',
       resourceType: json['resourceType'] ?? '',
       status: json['status'] ?? '',
-      start: DateTime.parse(json['start']),
-      end: DateTime.parse(json['end']),
+      start:
+          DateTime.tryParse(json['start']?.toString() ?? '') ?? DateTime.now(),
+      end: DateTime.tryParse(json['end']?.toString() ?? '') ?? DateTime.now(),
       patientName: json['patientName'] ?? '',
       doctorName: json['doctorName'] ?? '',
       diagnosis: json['diagnosis'] ?? '',
@@ -108,7 +133,9 @@ class OtAppointment {
       participants: (json['participants'] as List)
           .map((e) => Participant.fromJson(e))
           .toList(),
-      createdAt: DateTime.parse(json['created_at']),
+      createdAt:
+          DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+          DateTime.now(),
       location: location,
     );
   }

@@ -1,15 +1,19 @@
+// lib/widgets/app_header.dart
 import 'package:flutter/material.dart';
 import 'menu_bar.dart' as local_menu;
-import 'package:my_app/services/local_storage_service.dart';
 
 class AppHeader extends StatefulWidget {
   final Function(String) onMenuSelect;
   final String currentTime;
+  final String patientName;
+  final String surgeonName;
 
   const AppHeader({
     super.key,
     required this.onMenuSelect,
     required this.currentTime,
+    required this.patientName,
+    required this.surgeonName,
   });
 
   @override
@@ -23,294 +27,231 @@ class _AppHeaderState extends State<AppHeader> {
   String? _selectedDocumentButton;
   String? _selectedToolButton;
   bool _showMedicalToolbar = false;
-  
-  // Store active patient data
-  Map<String, dynamic>? _activePatientData;
-  String _patientName = 'No Active Patient';
-  String _patientId = 'N/A';
-  String _doctorName = 'N/A';
-  String _procedure = 'N/A';
-  String _surgeon = 'N/A';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadActivePatientData();
-  }
-
-  void _loadActivePatientData() {
-    // Get active patient from local storage
-    final activePatient = LocalStorageService.getActivePatient();
-    
-    if (activePatient != null) {
-      setState(() {
-        _activePatientData = activePatient.patientData;
-        _patientName = activePatient.patientName;
-        _patientId = activePatient.patientId;
-        _doctorName = activePatient.doctorName;
-        _procedure = activePatient.procedureCode;
-        
-        // Extract surgeon from participants if available
-        final participants = activePatient.patientData['participants'] as List?;
-        if (participants != null) {
-          for (var participant in participants) {
-            if (participant is Map && 
-                participant['actor'] is Map &&
-                (participant['actor']['reference'] as String?)?.contains('Practitioner') == true) {
-              _surgeon = participant['actor']['display']?.toString() ?? 'N/A';
-              break;
-            }
-          }
-        }
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Window controls (optional for desktop)
-        //_buildWindowControls(),
         // Menu bar
         local_menu.MenuBar(onMenuSelect: widget.onMenuSelect),
-        // Single Toolbar Actions Row with everything combined
-        _buildCombinedToolbar(),
+        // Single Line Compact Toolbar
+        _buildSingleLineToolbar(),
         // Medical Toolbar buttons (hidden by default, shown on click)
         if (_showMedicalToolbar) _buildMedicalToolbar(),
       ],
     );
   }
 
-  Widget _buildWindowControls() {
+  Widget _buildSingleLineToolbar() {
     return Container(
-      height: 40,
-      color: const Color(0xFFEEF1F4),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      height: 40, // Fixed height for single line
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFCFD9DE)),
+      ),
       child: Row(
         children: [
-          Container(
-            width: 12,
-            height: 12,
-            decoration: const BoxDecoration(
-              color: Color(0xFFFF5F57),
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            width: 12,
-            height: 12,
-            decoration: const BoxDecoration(
-              color: Color(0xFFFFBD2E),
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            width: 12,
-            height: 12,
-            decoration: const BoxDecoration(
-              color: Color(0xFF2ECC71),
-              shape: BoxShape.circle,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCombinedToolbar() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isNarrow = constraints.maxWidth < 900;
-
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: const Color(0xFFCFD9DE)),
-          ),
-          child: isNarrow
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        _buildActionButton(
-                          icon: Icons.save,
-                          label: 'Save',
-                          color: Colors.green,
-                          onTap: () => _performAction('file', 'save'),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              _buildInfoField(
-                                label: 'PID',
-                                value: _patientId,
-                                showIcon: true,
-                                icon: Icons.fingerprint_outlined,
-                              ),
-                              _buildInfoField(
-                                label: 'Procedure',
-                                value: _procedure,
-                                showIcon: true,
-                                icon: Icons.medical_services_outlined,
-                                isProcedure: true,
-                              ),
-                              _buildInfoField(
-                                label: 'Surgeon',
-                                value: _surgeon,
-                                showIcon: true,
-                                icon: Icons.badge_outlined,
-                              ),
-                              _buildInfoField(
-                                label: 'Patient',
-                                value: _patientName,
-                                showIcon: true,
-                                icon: Icons.person_outline,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        _buildStartTimeField(),
-                        const SizedBox(width: 16),
-                        _buildToggleToolsButton(),
-                        const SizedBox(width: 8),
-                        _buildEmergencyButton(),
-                      ],
-                    ),
-                  ],
-                )
-              : Row(
-                  children: [
-                    // Save button
-                    _buildActionButton(
-                      icon: Icons.save,
-                      label: 'Save',
-                      color: Colors.green,
-                      onTap: () => _performAction('file', 'save'),
-                    ),
-                    const SizedBox(width: 16),
-
-                    // Patient ID
-                    _buildInfoField(
-                      label: 'PID',
-                      value: _patientId,
-                      showIcon: true,
-                      icon: Icons.fingerprint_outlined,
-                    ),
-                    const SizedBox(width: 12),
-
-                    // Procedure
-                    _buildInfoField(
-                      label: 'Procedure',
-                      value: _procedure,
-                      showIcon: true,
-                      icon: Icons.medical_services_outlined,
-                      isProcedure: true,
-                    ),
-                    const SizedBox(width: 12),
-
-                    // Surgeon
-                    _buildInfoField(
-                      label: 'Surgeon',
-                      value: _surgeon,
-                      showIcon: true,
-                      icon: Icons.badge_outlined,
-                    ),
-                    const SizedBox(width: 12),
-
-                    // Patient Name
-                    _buildInfoField(
-                      label: 'Patient',
-                      value: _patientName,
-                      showIcon: true,
-                      icon: Icons.person_outline,
-                    ),
-
-                    // Spacer
-                    const Spacer(),
-
-                    // Start Time (stuck to the right)
-                    _buildStartTimeField(),
-
-                    const SizedBox(width: 16),
-
-                    // Refresh patient data button
-                    if (_activePatientData != null)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: Tooltip(
-                          message: 'Refresh patient data',
-                          child: IconButton(
-                            icon: const Icon(Icons.refresh, size: 16),
-                            onPressed: () {
-                              _loadActivePatientData();
-                              _showSnackbar('Patient data refreshed');
-                            },
-                            color: Colors.blue,
-                          ),
-                        ),
-                      ),
-
-                    // Toggle Tools Button
-                    _buildToggleToolsButton(),
-
-                    const SizedBox(width: 8),
-
-                    // Emergency button
-                    _buildEmergencyButton(),
-                  ],
-                ),
-        );
-      },
-    );
-  }
-
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(4),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF0F2F5),
-            border: Border.all(color: const Color(0xFFCFD9DE)),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+          // Left side: Show Tools, Save, Print buttons
+          Row(
             children: [
-              Icon(icon, size: 14, color: color),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey[700],
+              // Show Tools button
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      _showMedicalToolbar = !_showMedicalToolbar;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(4),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _showMedicalToolbar
+                          ? const Color(0xFF4A90E2)
+                          : const Color(0xFFF0F2F5),
+                      border: Border.all(
+                        color: _showMedicalToolbar
+                            ? const Color(0xFF3A7BC8)
+                            : const Color(0xFFCFD9DE),
+                      ),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _showMedicalToolbar
+                              ? Icons.arrow_drop_up
+                              : Icons.arrow_drop_down,
+                          size: 16,
+                          color: _showMedicalToolbar
+                              ? Colors.white
+                              : Colors.grey[700],
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _showMedicalToolbar ? 'Hide Tools' : 'Show Tools',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: _showMedicalToolbar
+                                ? Colors.white
+                                : Colors.grey[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              // Save button
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _performAction('file', 'save'),
+                  borderRadius: BorderRadius.circular(4),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0F2F5),
+                      border: Border.all(color: const Color(0xFFCFD9DE)),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.save, size: 14, color: Colors.green),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Save',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // Print button
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _performAction('file', 'print'),
+                  borderRadius: BorderRadius.circular(4),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0F2F5),
+                      border: Border.all(color: const Color(0xFFCFD9DE)),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.print, size: 14, color: Colors.purple),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Print',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
-        ),
+
+          // Spacer between buttons and patient info
+          const Spacer(),
+
+          // Center: Patient Name and Surgeon Name
+          Row(
+            children: [
+              // Patient Name
+              _buildInfoField(
+                label: 'Patient',
+                value: widget.patientName,
+                icon: Icons.person,
+                color: Colors.blue,
+              ),
+              const SizedBox(width: 12),
+
+              // Surgeon Name
+              _buildInfoField(
+                label: 'Surgeon',
+                value: widget.surgeonName,
+                icon: Icons.medical_services,
+                color: Colors.green,
+              ),
+            ],
+          ),
+
+          // Spacer between patient info and right side
+          const Spacer(),
+
+          // Right side: Time and Emergency
+          Row(
+            children: [
+              // Time display
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F9FF),
+                  border: Border.all(color: const Color(0xFFB8E2FF)),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.access_time,
+                      size: 14,
+                      color: Color(0xFF1976D2),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      widget.currentTime,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1976D2),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              // Emergency button
+              _buildEmergencyButton(),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -318,198 +259,70 @@ class _AppHeaderState extends State<AppHeader> {
   Widget _buildInfoField({
     required String label,
     required String value,
-    bool showIcon = false,
-    IconData? icon,
-    bool isProcedure = false,
+    required IconData icon,
+    required Color color,
   }) {
-    // Highlight if no patient is selected
-    final bool isEmpty = value == 'No Active Patient' || value == 'N/A';
-    
-    return Tooltip(
-      message: isEmpty ? 'Click to select a patient from OT List' : '$label: $value',
-      child: GestureDetector(
-        onTap: isEmpty ? () => _navigateToOTList(context) : null,
-        child: Container(
-          height: 32,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            color: isEmpty 
-              ? const Color(0xFFF5F5F5)
-              : isProcedure 
-                ? const Color(0xFFFEF2F2) 
-                : const Color(0xFFF8FAFF),
-            border: Border.all(
-              color: isEmpty
-                ? const Color(0xFFE0E0E0)
-                : isProcedure
-                  ? const Color(0xFFFECACA)
-                  : const Color(0xFFE3F2FD),
-            ),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (showIcon && icon != null)
-                Icon(
-                  icon,
-                  size: 12,
-                  color: isEmpty
-                    ? Colors.grey
-                    : isProcedure
-                      ? const Color(0xFFDC2626)
-                      : const Color(0xFF5C6B7A),
-                ),
-              if (showIcon && icon != null) const SizedBox(width: 6),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                      color: isEmpty
-                        ? Colors.grey
-                        : isProcedure
-                          ? const Color(0xFFDC2626)
-                          : const Color(0xFF5C6B7A),
-                    ),
-                  ),
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isEmpty
-                        ? Colors.grey
-                        : isProcedure
-                          ? const Color(0xFFDC2626)
-                          : const Color(0xFF2C3E50),
-                    ),
-                  ),
-                ],
-              ),
-              if (isEmpty)
-                const Padding(
-                  padding: EdgeInsets.only(left: 4),
-                  child: Icon(
-                    Icons.info_outline,
-                    size: 10,
-                    color: Colors.grey,
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStartTimeField() {
-    // Get start time from active patient if available
-    String displayTime = widget.currentTime;
-    if (_activePatientData?['start'] != null) {
-      try {
-        final startTime = DateTime.parse(_activePatientData!['start'].toString());
-        displayTime = '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}';
-      } catch (e) {
-        print('Error parsing start time: $e');
-      }
-    }
-
-    return Tooltip(
-      message: 'Surgery Start Time',
-      child: Container(
-        height: 32,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFE8F5E9),
-          border: Border.all(color: const Color(0xFFC8E6C9)),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.play_arrow, size: 14, color: Color(0xFF2E7D32)),
-            const SizedBox(width: 6),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Start Time',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF2E7D32),
-                  ),
-                ),
-                Text(
-                  displayTime,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1B5E20),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildToggleToolsButton() {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            _showMedicalToolbar = !_showMedicalToolbar;
-          });
-        },
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(4),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: _showMedicalToolbar
-                ? const Color(0xFF4A90E2)
-                : const Color(0xFFF0F2F5),
-            border: Border.all(
-              color: _showMedicalToolbar
-                  ? const Color(0xFF3A7BC8)
-                  : const Color(0xFFCFD9DE),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(
+            '$label: ',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey[600],
             ),
-            borderRadius: BorderRadius.circular(4),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                _showMedicalToolbar
-                    ? Icons.arrow_drop_up
-                    : Icons.arrow_drop_down,
-                size: 16,
-                color: _showMedicalToolbar ? Colors.white : Colors.grey[700],
-              ),
-              const SizedBox(width: 4),
-              Text(
-                _showMedicalToolbar ? 'Hide Tools' : 'Show Tools',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: _showMedicalToolbar ? Colors.white : Colors.grey[700],
-                ),
-              ),
-            ],
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
+  // Widget _buildInfoField({
+  //   required String label,
+  //   required String value,
+  //   required IconData icon,
+  //   required Color color,
+  // }) {
+  //   return Row(
+  //     children: [
+  //       Icon(icon, size: 16, color: color),
+  //       const SizedBox(width: 6),
+  //       Text(
+  //         '$label: ',
+  //         style: TextStyle(
+  //           fontSize: 12,
+  //           fontWeight: FontWeight.w500,
+  //           color: Colors.grey[600],
+  //         ),
+  //       ),
+  //       Text(
+  //         value,
+  //         style: TextStyle(
+  //           fontSize: 13,
+  //           fontWeight: FontWeight.w600,
+  //           color: color,
+  //         ),
+  //       ),
+  //     ],
+  //   );
+  // }
 
   Widget _buildEmergencyButton() {
     return Material(
@@ -528,10 +341,10 @@ class _AppHeaderState extends State<AppHeader> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.warning, size: 14, color: Colors.red),
-              const SizedBox(width: 4),
-              Text(
+              const SizedBox(width: 6),
+              const Text(
                 'Emergency',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: Colors.red,
@@ -543,6 +356,11 @@ class _AppHeaderState extends State<AppHeader> {
       ),
     );
   }
+
+  // Keep the rest of your existing methods (they remain unchanged):
+  // _buildMedicalToolbar(), _buildButtonGroup(), _buildToolbarButton(),
+  // _selectButtonGroup(), _handleButtonPress(), _performAction(),
+  // _showSnackbar(), _showEmergencyDialog()
 
   Widget _buildMedicalToolbar() {
     return Container(
@@ -658,7 +476,7 @@ class _AppHeaderState extends State<AppHeader> {
               ),
               _buildToolbarButton(
                 label: 'ECG',
-                icon: Icons.heart_broken,
+                icon: Icons.heart_broken_outlined,
                 isSelected: _selectedMedicalButton == 'ecg',
                 onPressed: () => _handleButtonPress('ecg', 'medical'),
                 color: Colors.purple,
@@ -743,18 +561,6 @@ class _AppHeaderState extends State<AppHeader> {
           ),
 
           const Spacer(),
-
-          // Clear active patient button
-          if (_activePatientData != null)
-            Tooltip(
-              message: 'Clear active patient',
-              child: IconButton(
-                icon: const Icon(Icons.person_remove, size: 18),
-                onPressed: () {
-                  _clearActivePatient();
-                },
-              ),
-            ),
 
           // Close toolbar button
           IconButton(
@@ -918,22 +724,23 @@ class _AppHeaderState extends State<AppHeader> {
   }
 
   void _performAction(String group, String button) {
+    // Here you can implement the actual functionality for each button
     String action = '';
 
     switch (group) {
       case 'file':
         switch (button) {
           case 'save':
-            action = 'Saving patient data...';
+            action = 'Saving document...';
             break;
           case 'export':
-            action = 'Exporting patient records...';
+            action = 'Exporting data...';
             break;
           case 'print':
-            action = 'Printing patient information...';
+            action = 'Printing...';
             break;
           case 'new':
-            action = 'Creating new patient record...';
+            action = 'Creating new document...';
             break;
         }
         break;
@@ -991,7 +798,7 @@ class _AppHeaderState extends State<AppHeader> {
             action = 'Opening medical calculator...';
             break;
           case 'timer':
-            action = 'Starting surgery timer...';
+            action = 'Starting timer...';
             break;
           case 'doses':
             action = 'Calculating drug doses...';
@@ -1023,25 +830,16 @@ class _AppHeaderState extends State<AppHeader> {
             Text('Emergency Protocol'),
           ],
         ),
-        content: Column(
+        content: const Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (_activePatientData != null)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Patient: $_patientName', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  Text('ID: $_patientId'),
-                  const SizedBox(height: 12),
-                ],
-              ),
-            const Text('Emergency actions available:'),
-            const SizedBox(height: 8),
-            const Text('• Call Code Blue Team'),
-            const Text('• Request Emergency Drugs'),
-            const Text('• Activate Rapid Response'),
-            const Text('• Emergency Ventilation'),
+            Text('Emergency actions available:'),
+            SizedBox(height: 12),
+            Text('• Call Code Blue Team'),
+            Text('• Request Emergency Drugs'),
+            Text('• Activate Rapid Response'),
+            Text('• Emergency Ventilation'),
           ],
         ),
         actions: [
@@ -1052,7 +850,7 @@ class _AppHeaderState extends State<AppHeader> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              _showSnackbar('Emergency team notified for $_patientName!');
+              _showSnackbar('Emergency team notified!');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
@@ -1063,30 +861,5 @@ class _AppHeaderState extends State<AppHeader> {
         ],
       ),
     );
-  }
-
-  void _clearActivePatient() {
-    if (_activePatientData != null) {
-      LocalStorageService.removeActivePatient(_patientId);
-      setState(() {
-        _activePatientData = null;
-        _patientName = 'No Active Patient';
-        _patientId = 'N/A';
-        _doctorName = 'N/A';
-        _procedure = 'N/A';
-        _surgeon = 'N/A';
-      });
-      _showSnackbar('Active patient cleared');
-    }
-  }
-
-  void _navigateToOTList(BuildContext context) {
-    // Use the onMenuSelect callback to navigate to OT List
-    widget.onMenuSelect('/ot-list');
-  }
-
-  // Call this method from other screens when patient is selected
-  void updateActivePatient() {
-    _loadActivePatientData();
   }
 }

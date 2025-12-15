@@ -1,6 +1,7 @@
+// lib/main.dart (or wherever AnesthesiaApp is)
 import 'package:flutter/material.dart';
-import 'app_theme.dart';
-import 'app_routes.dart';
+import 'package:my_app/app/app_theme.dart';
+import 'package:my_app/app/main_app_layout.dart';
 
 class AnesthesiaApp extends StatelessWidget {
   const AnesthesiaApp({super.key});
@@ -10,8 +11,7 @@ class AnesthesiaApp extends StatelessWidget {
     return MaterialApp(
       title: 'Anesthesia Management System',
       theme: AppTheme.lightTheme,
-      initialRoute: AppRoutes.home,
-      routes: AppRoutes.routes,
+      home: const MainAppLayout(), // Use MainAppLayout as home
       debugShowCheckedModeBanner: false,
     );
   }

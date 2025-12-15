@@ -58,7 +58,7 @@ class AppConstants {
 
   // Menu items
   static const List<Map<String, dynamic>> patientMenuItems = [
-    {'label': 'OT List', 'route': AppRoutes.otList},
+    {'label': 'OT List', 'route': '/ot-list'},
     {'label': 'OT Information', 'route': AppRoutes.otInformation},
     {'label': 'Hand out form', 'route': AppRoutes.handOutForm},
   ];
