@@ -1,16 +1,18 @@
-// lib/widgets/status_bar.dart
+// lib/widgets/status_bar.dart (updated)
 import 'package:flutter/material.dart';
 
 class StatusBar extends StatelessWidget {
   final String currentScreen;
   final DateTime lastUpdated;
   final bool isConnected;
+  final String? userRole;
 
   const StatusBar({
     super.key,
     required this.currentScreen,
     required this.lastUpdated,
     this.isConnected = true,
+    this.userRole,
   });
 
   @override
@@ -38,20 +40,25 @@ class StatusBar extends StatelessWidget {
                     color: Colors.grey[600],
                   ),
                 ),
-                const SizedBox(width: 16),
-                Icon(
-                  Icons.access_time,
-                  size: 14,
-                  color: Colors.grey[600],
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Last updated: ${_formatTime(lastUpdated)}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
+                if (userRole != null) ...[
+                  const SizedBox(width: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _getRoleColor(userRole!).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: _getRoleColor(userRole!)),
+                    ),
+                    child: Text(
+                      userRole!.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: _getRoleColor(userRole!),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -111,6 +118,19 @@ class StatusBar extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Color _getRoleColor(String role) {
+    switch (role.toLowerCase()) {
+      case 'admin':
+        return Colors.purple;
+      case 'doctor':
+        return Colors.blue;
+      case 'nurse':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
   }
 
   String _formatTime(DateTime time) {

@@ -21,7 +21,6 @@ class ActivePatientAdapter extends TypeAdapter<ActivePatient> {
       patientData: (fields[1] as Map).cast<String, dynamic>(),
       activatedAt: fields[2] as DateTime,
       isSynced: fields[3] as bool,
-      serverId: fields[4] as String?,
     );
   }
 
@@ -37,8 +36,7 @@ class ActivePatientAdapter extends TypeAdapter<ActivePatient> {
       ..write(obj.activatedAt)
       ..writeByte(3)
       ..write(obj.isSynced)
-      ..writeByte(4)
-      ..write(obj.serverId);
+      ..writeByte(4);
   }
 
   @override

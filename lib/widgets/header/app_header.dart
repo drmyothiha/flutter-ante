@@ -7,6 +7,13 @@ class AppHeader extends StatefulWidget {
   final String currentTime;
   final String patientName;
   final String surgeonName;
+  final bool isPatientActive;
+  final String? userName;
+  final String? userRole;
+  final Color? userRoleColor;
+  final IconData? userRoleIcon;
+  final String? userDepartment;
+  final VoidCallback? onLogout;
 
   const AppHeader({
     super.key,
@@ -14,6 +21,13 @@ class AppHeader extends StatefulWidget {
     required this.currentTime,
     required this.patientName,
     required this.surgeonName,
+    required this.isPatientActive,
+    this.userName,
+    this.userRole,
+    this.userRoleColor,
+    this.userRoleIcon,
+    this.userDepartment,
+    this.onLogout,
   });
 
   @override

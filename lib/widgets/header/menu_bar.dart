@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:my_app/app/app_routes.dart';
+import 'package:my_app/services/auth_service.dart';
 import 'package:my_app/utils/constants.dart';
 
 class MenuBar extends StatefulWidget {
@@ -60,6 +61,38 @@ class _MenuBarState extends State<MenuBar> {
       'read': true,
     },
   ];
+  void _handleLogout() async {
+    // Show confirmation dialog
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true) {
+      // Perform actual logout
+      await AuthService.logout();
+
+      // Notify parent widget about logout
+      if (widget.onSettingsAction != null) {
+        widget.onSettingsAction!(AppRoutes.logout);
+      } else {
+        widget.onMenuSelect(AppRoutes.logout);
+      }
+    }
+  }
 
   // For settings
   final LayerLink _settingsLink = LayerLink();
@@ -442,6 +475,7 @@ class _MenuBarState extends State<MenuBar> {
         'icon': Icons.logout,
         'route': AppRoutes.logout,
         'color': Colors.red,
+        'isLogout': true,
       },
     ];
 
@@ -477,7 +511,16 @@ class _MenuBarState extends State<MenuBar> {
                           child: InkWell(
                             onTap: () {
                               _hideSettingsOverlay();
-                              widget.onMenuSelect(item['route'] as String);
+                              if (item['isLogout'] == true) {
+                                // Handle logout specifically
+                                _handleLogout();
+                              } else if (widget.onSettingsAction != null) {
+                                widget.onSettingsAction!(
+                                  item['route'] as String,
+                                );
+                              } else {
+                                widget.onMenuSelect(item['route'] as String);
+                              }
                             },
                             onHover: (hovering) {
                               if (hovering) _cancelHideSettings();

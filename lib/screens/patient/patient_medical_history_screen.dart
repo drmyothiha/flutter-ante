@@ -1,115 +1,133 @@
 // lib/screens/patient/patient_medical_history_screen.dart
 import 'package:flutter/material.dart';
 
-class PatientMedicalHistoryScreen extends StatefulWidget {
-  final Map<String, dynamic> patientData;
-  final VoidCallback? onBack;
+class PatientMedicalHistoryScreen extends StatelessWidget {
+  final Map<String, dynamic>? patientData;
 
   const PatientMedicalHistoryScreen({
     super.key,
-    required this.patientData,
-    this.onBack,
+    this.patientData,
   });
 
   @override
-  State<PatientMedicalHistoryScreen> createState() =>
-      _PatientMedicalHistoryScreenState();
-}
-
-class _PatientMedicalHistoryScreenState
-    extends State<PatientMedicalHistoryScreen> {
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      // Remove AppBar since MainLayoutScreen already has one
-      body: Column(
-        children: [
-          // Patient header
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: Colors.blue[50],
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () {
-                    if (widget.onBack != null) {
-                      widget.onBack!();
-                    } else {
-                      Navigator.pop(context);
-                    }
-                  },
-                ),
-                const SizedBox(width: 16),
-                CircleAvatar(child: Text(widget.patientData['patientName'][0])),
-                const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.patientData['patientName'],
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'ID: ${widget.patientData['id']}',
-                      style: const TextStyle(color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Medical history content here
-                  _buildInfoCard(
-                    'Procedure',
-                    widget.patientData['procedureCode'],
-                  ),
-                  _buildInfoCard('Diagnosis', widget.patientData['diagnosis']),
-                  _buildInfoCard('Doctor', widget.patientData['doctorName']),
-                  _buildInfoCard('Date', widget.patientData['appointmentDate']),
-                  _buildInfoCard('Time', widget.patientData['appointmentTime']),
-                  // Add more medical history sections...
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+    if (patientData == null) {
+      return const Center(
+        child: Text('No patient data available'),
+      );
+    }
 
-  Widget _buildInfoCard(String title, String value) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
+    return Scaffold(
+      // NO AppBar here - we're inside main content area
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-                fontWeight: FontWeight.w500,
+            // Patient header (compact version)
+            // Container(
+            //   padding: const EdgeInsets.all(16),
+            //   decoration: BoxDecoration(
+            //     color: Colors.blue[50],
+            //     borderRadius: BorderRadius.circular(8),
+            //     border: Border.all(color: Colors.blue[100]!),
+            //   ),
+            //   child: Row(
+            //     children: [
+            //       CircleAvatar(
+            //         radius: 24,
+            //         backgroundColor: Colors.blue,
+            //         child: Text(
+            //           patientData!['patientName']?.substring(0, 1) ?? 'P',
+            //           style: const TextStyle(
+            //             fontSize: 16,
+            //             fontWeight: FontWeight.bold,
+            //             color: Colors.white,
+            //           ),
+            //         ),
+            //       ),
+            //       const SizedBox(width: 16),
+            //       Expanded(
+            //         child: Column(
+            //           crossAxisAlignment: CrossAxisAlignment.start,
+            //           children: [
+            //             Text(
+            //               patientData!['patientName'] ?? 'Unknown Patient',
+            //               style: const TextStyle(
+            //                 fontSize: 18,
+            //                 fontWeight: FontWeight.bold,
+            //               ),
+            //             ),
+            //             Text(
+            //               'ID: ${patientData!['id'] ?? 'N/A'}',
+            //               style: const TextStyle(color: Colors.grey),
+            //             ),
+            //           ],
+            //         ),
+            //       ),
+            //     ],
+            //   ),
+            // ),
+            
+            // const SizedBox(height: 16),
+            
+            // Medical history content
+            Card(
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Medical History',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Add your medical history content here
+                    _buildInfoRow('Procedure', patientData!['procedureCode']),
+                    _buildInfoRow('Doctor', patientData!['doctorName']),
+                    _buildInfoRow('Date', patientData!['formattedDate']),
+                    _buildInfoRow('Time', patientData!['formattedTime']),
+                    _buildInfoRow('Status', patientData!['status']),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-            ),
+            
+            // Add more sections as needed...
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, dynamic value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value?.toString() ?? 'N/A',
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
       ),
     );
   }

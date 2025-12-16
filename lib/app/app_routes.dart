@@ -13,7 +13,7 @@ class AppRoutes {
   static const String treatments = '/treatments';
   static const String whoChecklist = '/who-checklist';
   static const String drugsList = '/drugs-list';
-
+  
   // Settings routes
   static const String settings = '/settings';
   static const String profile = '/profile';
@@ -21,4 +21,7 @@ class AppRoutes {
   static const String shortcuts = '/shortcuts';
   static const String about = '/about';
   static const String logout = '/logout';
+  
+  // Anaesthesia routes
+  static const String anaesthesiaManagement = '/anaesthesia-management';
 }

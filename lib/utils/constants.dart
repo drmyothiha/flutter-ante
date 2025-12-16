@@ -82,7 +82,7 @@ class AppConstants {
     {'label': 'Drugs List', 'route': AppRoutes.drugsList},
   ];
 }
-// Add this to your constants.dart file
+
 class NotificationConstants {
   static List<Map<String, dynamic>> get demoNotifications => [
     {

@@ -5,10 +5,16 @@ import 'package:flutter/material.dart';
 import 'package:my_app/widgets/bottom_panel/bottom_panel.dart';
 import 'package:my_app/widgets/header/app_header.dart';
 import 'package:my_app/screens/patient/ot_list_screen.dart';
+import 'package:my_app/screens/patient/patient_medical_history_screen.dart';
+import 'package:my_app/screens/anaesthesia/anaesthesia_management_screen.dart';
 import 'package:my_app/app/app_routes.dart';
+import 'package:my_app/services/local_storage_service.dart';
+import 'package:my_app/services/auth_service.dart'; // Add this import
 
 class MainAppLayout extends StatefulWidget {
-  const MainAppLayout({super.key});
+  final VoidCallback? onLogout;
+
+  const MainAppLayout({super.key, this.onLogout});
 
   @override
   State<MainAppLayout> createState() => _MainAppLayoutState();
@@ -20,18 +26,86 @@ class _MainAppLayoutState extends State<MainAppLayout> {
   DateTime _currentTime = DateTime.now();
   String _currentPatientName = 'No Patient Selected';
   String _currentSurgeonName = 'No Surgeon';
+  bool _showActivePatient = false;
 
-  // Timer to update time
+  // User info variables - ADD THESE
+  String _currentUserName = 'Loading...';
+  String _currentUserRole = 'user';
+  String _currentUserDepartment = '';
+  Color _currentUserRoleColor = Colors.grey;
+  IconData _currentUserRoleIcon = Icons.person;
+
+  // Track navigation stack for back button
+  final List<Map<String, dynamic>> _screenStack = [];
+
   late Timer _timer;
-
-  final Map<String, Widget> _screenMap = {};
 
   @override
   void initState() {
     super.initState();
-    _initializeScreenMap();
-    
-    // Update time every second
+    _loadUserInfo(); // ADD THIS
+    _loadActivePatient();
+    _startTimer();
+
+    // Initialize with OT List as first screen
+    _screenStack.add({
+      'route': AppRoutes.otList,
+      'title': 'OT List',
+      'data': null,
+    });
+  }
+
+  // ADD THIS METHOD
+  void _loadUserInfo() async {
+    final user = await AuthService.getCurrentUser();
+    if (user != null) {
+      setState(() {
+        _currentUserName = user.name;
+        _currentUserRole = user.role;
+        _currentUserDepartment = user.department ?? '';
+        _currentUserRoleColor = AuthService.getRoleColor(user.role);
+        _currentUserRoleIcon = AuthService.getRoleIcon(user.role);
+      });
+    }
+  }
+
+  void _handlePatientAction(
+    Map<String, dynamic> patientData,
+    String actionType,
+  ) {
+    setState(() {
+      _screenStack.add({
+        'route': actionType, // 'medical-history' or 'anaesthesia-management'
+        'title': actionType == 'medical-history'
+            ? 'Medical History'
+            : 'Anaesthesia Management',
+        'data': patientData,
+      });
+      _currentScreen = actionType;
+      _screenTitle = actionType == 'medical-history'
+          ? 'Medical History'
+          : 'Anaesthesia Management';
+
+      // Update toolbar with patient info
+      _currentPatientName = patientData['patientName'] ?? 'Viewing Patient';
+      _currentSurgeonName = patientData['doctorName'] ?? 'Unknown Surgeon';
+      _showActivePatient = false;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '${actionType == 'medical-history' ? 'Viewing' : 'Managing'} ${patientData['patientName']}',
+        ),
+        backgroundColor: actionType == 'medical-history'
+            ? Colors.blue
+            : Colors.green,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
         _currentTime = DateTime.now();
@@ -39,57 +113,116 @@ class _MainAppLayoutState extends State<MainAppLayout> {
     });
   }
 
-  void _initializeScreenMap() {
-    _screenMap[AppRoutes.otList] = OtListScreen(
-      onPatientSelect: _handlePatientSelect,
-    );
-    // Initialize other screens here as you create them
+  void _loadActivePatient() async {
+    final activePatient = LocalStorageService.getActivePatient();
+    if (activePatient != null) {
+      setState(() {
+        _currentPatientName =
+            activePatient.patientData['patientName'] ?? 'Active Patient';
+        _currentSurgeonName =
+            activePatient.patientData['doctorName'] ?? 'Surgeon';
+        _showActivePatient = true;
+      });
+    }
   }
 
-  void _handlePatientSelect(Map<String, dynamic> patientData) {
+  void _navigateToScreen({
+    required String route,
+    required String title,
+    Map<String, dynamic>? data,
+  }) {
     setState(() {
-      _currentPatientName = patientData['patientName'] ?? 'Unknown Patient';
-      _currentSurgeonName = patientData['doctorName'] ?? 'Unknown Surgeon';
-      
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${patientData['patientName']} selected as active patient'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    });
-  }
-
-  void _handleMenuSelect(String route) {
-    setState(() {
+      _screenStack.add({'route': route, 'title': title, 'data': data});
       _currentScreen = route;
-      _screenTitle = _getScreenTitle(route);
+      _screenTitle = title;
+
+      // Update toolbar with patient info
+      if (data != null) {
+        _currentPatientName = data['patientName'] ?? 'Viewing Patient';
+        _currentSurgeonName = data['doctorName'] ?? 'Unknown Surgeon';
+        _showActivePatient = false;
+      }
     });
   }
 
-  void _handleNotificationTap(Map<String, dynamic> notification) {
-    print('Notification tapped: ${notification['title']}');
-    // Show notification details
+  void _handleBackNavigation() {
+    if (_screenStack.length > 1) {
+      setState(() {
+        // Remove current screen
+        _screenStack.removeLast();
+
+        // Get previous screen
+        final previousScreen = _screenStack.last;
+        _currentScreen = previousScreen['route'];
+        _screenTitle = previousScreen['title'];
+
+        // Reset toolbar if going back to OT List
+        if (_currentScreen == AppRoutes.otList) {
+          _loadActivePatient(); // Reload active patient
+        }
+      });
+    } else {
+      // If only OT List remains, ask to exit app
+      _showExitConfirmation();
+    }
+  }
+
+  void _showExitConfirmation() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(notification['title']),
-        content: Text(notification['message']),
+        title: const Text('Exit Application?'),
+        content: const Text('Are you sure you want to exit?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: const Text('Exit'),
           ),
         ],
       ),
     );
   }
 
-  void _handleSettingsAction(String action) {
-    print('Settings action: $action');
-    // Handle settings actions
+  void _handleMenuSelect(String route) {
+    // Special handling for logout
+    if (route == AppRoutes.logout) {
+      _handleLogout();
+      return;
+    }
+
+    setState(() {
+      // Clear stack and navigate to selected menu item
+      _screenStack.clear();
+      _screenStack.add({
+        'route': route,
+        'title': _getScreenTitle(route),
+        'data': null,
+      });
+      _currentScreen = route;
+      _screenTitle = _getScreenTitle(route);
+
+      // Reset toolbar for menu navigation
+      if (route != AppRoutes.otList) {
+        _currentPatientName = 'No Patient Selected';
+        _currentSurgeonName = 'No Surgeon';
+        _showActivePatient = false;
+      } else {
+        _loadActivePatient();
+      }
+    });
+  }
+
+  // ADD THIS METHOD
+  void _handleLogout() {
+    if (widget.onLogout != null) {
+      widget.onLogout!();
+    }
   }
 
   String _getScreenTitle(String route) {
@@ -112,47 +245,74 @@ class _MainAppLayoutState extends State<MainAppLayout> {
       AppRoutes.shortcuts: 'Keyboard Shortcuts',
       AppRoutes.about: 'About',
       AppRoutes.logout: 'Logout',
+      'medical-history': 'Medical History',
+      'anaesthesia-management': 'Anaesthesia Management',
     };
-    
+
     return titleMap[route] ?? 'Unknown Screen';
   }
 
-  Widget _getCurrentScreen() {
-    final screen = _screenMap[_currentScreen];
-    
-    if (screen == null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.construction,
-              size: 64,
-              color: Colors.orange,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Under Construction',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Screen "$_screenTitle" is coming soon!',
-              style: TextStyle(color: Colors.grey),
-            ),
-          ],
-        ),
+  Widget _buildCurrentScreen() {
+    final currentScreenData = _screenStack.last;
+    final route = currentScreenData['route'];
+    final data = currentScreenData['data'];
+
+    // Handle built-in screens
+    if (route == AppRoutes.otList) {
+      return OtListScreen(
+        onPatientAction: _handlePatientAction,
+        userRole: _currentUserRole,
       );
     }
-    
-    return screen;
+
+    // Handle patient screens
+    switch (route) {
+      case 'medical-history':
+        return PatientMedicalHistoryScreen(patientData: data);
+      case 'anaesthesia-management':
+        return AnaesthesiaManagementScreen(patientData: data);
+      default:
+        return _buildUnderConstructionScreen();
+    }
+  }
+
+  Widget _buildUnderConstructionScreen() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.construction, size: 64, color: Colors.orange),
+          const SizedBox(height: 16),
+          Text(
+            'Under Construction',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Screen "$_screenTitle" is coming soon!',
+            style: TextStyle(color: Colors.grey[500]),
+          ),
+        ],
+      ),
+    );
   }
 
   String _formatTime(DateTime time) {
     return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}:${time.second.toString().padLeft(2, '0')}';
+  }
+
+  Widget _buildBackButton() {
+    if (_screenStack.length <= 1) return const SizedBox.shrink();
+
+    return IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: _handleBackNavigation,
+      tooltip: 'Back',
+    );
   }
 
   @override
@@ -160,26 +320,60 @@ class _MainAppLayoutState extends State<MainAppLayout> {
     return Scaffold(
       body: Column(
         children: [
-          // App Header (Static - includes Menu Bar + Toolbar)
           AppHeader(
             onMenuSelect: _handleMenuSelect,
             currentTime: _formatTime(_currentTime),
             patientName: _currentPatientName,
             surgeonName: _currentSurgeonName,
+            isPatientActive: _showActivePatient,
+            userName: _currentUserName,
+            userRole: _currentUserRole,
+            userRoleColor: _currentUserRoleColor,
+            userRoleIcon: _currentUserRoleIcon,
+            onLogout: _handleLogout,
+            userDepartment: _currentUserDepartment,
           ),
-          
-          // Main Content Area (Dynamic)
           Expanded(
             child: Container(
               color: Colors.grey[50],
-              child: _getCurrentScreen(),
+              child: Column(
+                children: [
+                  // Optional: Add a small app bar for back navigation
+                  if (_screenStack.length > 1)
+                    Container(
+                      height: 48,
+                      color: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Row(
+                        children: [
+                          _buildBackButton(),
+                          Text(
+                            _screenTitle,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            'Screen ${_screenStack.length}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  Expanded(child: _buildCurrentScreen()),
+                ],
+              ),
             ),
           ),
-          
-          // Status Bar (Static)
           StatusBar(
             currentScreen: _screenTitle,
             lastUpdated: DateTime.now(),
+            userRole: _currentUserRole, // Add this if StatusBar accepts it
           ),
         ],
       ),

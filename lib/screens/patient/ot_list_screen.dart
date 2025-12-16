@@ -2,14 +2,16 @@
 import 'package:flutter/material.dart';
 import 'package:my_app/models/ot_list_model.dart';
 import 'package:my_app/services/api_service.dart';
-import 'package:my_app/services/local_storage_service.dart';
 
+// lib/screens/patient/ot_list_screen.dart
 class OtListScreen extends StatefulWidget {
-  final void Function(Map<String, dynamic>)? onPatientSelect;
+  final void Function(Map<String, dynamic>, String)? onPatientAction;
+  final String userRole;
 
   const OtListScreen({
     super.key,
-    this.onPatientSelect,
+    this.onPatientAction,
+    required this.userRole,
   });
 
   @override
@@ -46,17 +48,14 @@ class _OtListScreenState extends State<OtListScreen> {
     try {
       final Map<String, dynamic> filters = {};
       
-      // Apply search filter
       if (_searchQuery.isNotEmpty) {
         filters['search'] = _searchQuery;
       }
       
-      // Apply status filter
       if (_selectedStatus != 'all') {
         filters['status'] = _selectedStatus;
       }
       
-      // Apply date filter (you'll need to adjust this based on your API)
       if (_selectedDate != 'all') {
         filters['date_range'] = _selectedDate;
       }
@@ -83,35 +82,20 @@ class _OtListScreenState extends State<OtListScreen> {
     }
   }
 
-  void _handlePatientSelect(OtAppointment appointment) async {
-    try {
-      // Convert appointment to JSON
-      final appointmentJson = appointment.toJson();
-      
-      // Save to local storage
-      await LocalStorageService.setPatientAsActive(appointmentJson);
-
-      // Call the callback if provided
-      if (widget.onPatientSelect != null) {
-        widget.onPatientSelect!(appointmentJson);
-      } else {
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${appointment.patientName} selected'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error selecting patient: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+  void _handlePatientAction(OtAppointment appointment, String actionType) {
+    final appointmentJson = appointment.toJson();
+    
+    if (widget.onPatientAction != null) {
+      widget.onPatientAction!(appointmentJson, actionType);
     }
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${actionType == 'medical-history' ? 'Viewing' : 'Managing'} ${appointment.patientName}'),
+        backgroundColor: actionType == 'medical-history' ? Colors.blue : Colors.green,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   void _refreshData() {
@@ -206,7 +190,7 @@ class _OtListScreenState extends State<OtListScreen> {
                         Container(
                           width: 8,
                           height: 8,
-                          decoration: BoxDecoration(
+                          decoration: const BoxDecoration(
                             color: Colors.grey,
                             shape: BoxShape.circle,
                           ),
@@ -223,7 +207,7 @@ class _OtListScreenState extends State<OtListScreen> {
                         Container(
                           width: 8,
                           height: 8,
-                          decoration: BoxDecoration(
+                          decoration: const BoxDecoration(
                             color: Colors.blue,
                             shape: BoxShape.circle,
                           ),
@@ -240,7 +224,7 @@ class _OtListScreenState extends State<OtListScreen> {
                         Container(
                           width: 8,
                           height: 8,
-                          decoration: BoxDecoration(
+                          decoration: const BoxDecoration(
                             color: Colors.orange,
                             shape: BoxShape.circle,
                           ),
@@ -257,7 +241,7 @@ class _OtListScreenState extends State<OtListScreen> {
                         Container(
                           width: 8,
                           height: 8,
-                          decoration: BoxDecoration(
+                          decoration: const BoxDecoration(
                             color: Colors.green,
                             shape: BoxShape.circle,
                           ),
@@ -274,7 +258,7 @@ class _OtListScreenState extends State<OtListScreen> {
                         Container(
                           width: 8,
                           height: 8,
-                          decoration: BoxDecoration(
+                          decoration: const BoxDecoration(
                             color: Colors.red,
                             shape: BoxShape.circle,
                           ),
@@ -364,14 +348,13 @@ class _OtListScreenState extends State<OtListScreen> {
               ),
               child: const Row(
                 children: [
-                  SizedBox(width: 60, child: Text('Patient ID', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
                   SizedBox(width: 120, child: Text('Patient Name', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
                   SizedBox(width: 100, child: Text('Doctor', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
                   SizedBox(width: 80, child: Text('Date', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
                   SizedBox(width: 80, child: Text('Time', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
                   SizedBox(width: 120, child: Text('Procedure', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
                   SizedBox(width: 100, child: Text('Status', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
-                  SizedBox(width: 100, child: Text('Actions', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                  SizedBox(width: 180, child: Text('Actions', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
                 ],
               ),
             ),
@@ -380,117 +363,127 @@ class _OtListScreenState extends State<OtListScreen> {
             ...appointments.map((appointment) {
               return Material(
                 color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => _handlePatientSelect(appointment),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      border: Border(bottom: BorderSide(color: Colors.grey[100]!)),
-                    ),
-                    child: Row(
-                      children: [
-                        // Patient ID
-                        SizedBox(
-                          width: 60,
-                          child: Text(
-                            appointment.id.length > 8 
-                              ? '${appointment.id.substring(0, 8)}...' 
-                              : appointment.id,
-                            style: const TextStyle(fontSize: 11, fontFamily: 'Monospace'),
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    border: Border(bottom: BorderSide(color: Colors.grey[100]!)),
+                  ),
+                  child: Row(
+                    children: [
+                      // Patient ID
+                      // 
+                      
+                      // Patient Name
+                      SizedBox(
+                        width: 120,
+                        child: Text(
+                          appointment.patientName,
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        
-                        // Patient Name
-                        SizedBox(
-                          width: 120,
-                          child: Text(
-                            appointment.patientName,
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                      ),
+                      
+                      // Doctor Name
+                      SizedBox(
+                        width: 100,
+                        child: Text(
+                          appointment.doctorName,
+                          style: const TextStyle(fontSize: 12),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        
-                        // Doctor Name
-                        SizedBox(
-                          width: 100,
+                      ),
+                      
+                      // Date
+                      SizedBox(
+                        width: 80,
+                        child: Text(
+                          appointment.formattedDate,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                      
+                      // Time
+                      SizedBox(
+                        width: 80,
+                        child: Text(
+                          appointment.formattedTime,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                      
+                      // Procedure
+                      SizedBox(
+                        width: 120,
+                        child: Tooltip(
+                          message: appointment.procedureCode,
                           child: Text(
-                            appointment.doctorName,
+                            appointment.procedureCode,
                             style: const TextStyle(fontSize: 12),
                             overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
                         ),
-                        
-                        // Date
-                        SizedBox(
-                          width: 80,
+                      ),
+                      
+                      // Status
+                      SizedBox(
+                        width: 100,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: appointment.statusColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: appointment.statusColor),
+                          ),
                           child: Text(
-                            appointment.formattedDate,
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                        ),
-                        
-                        // Time
-                        SizedBox(
-                          width: 80,
-                          child: Text(
-                            appointment.formattedTime,
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                        ),
-                        
-                        // Procedure
-                        SizedBox(
-                          width: 120,
-                          child: Tooltip(
-                            message: appointment.procedureCode,
-                            child: Text(
-                              appointment.procedureCode,
-                              style: const TextStyle(fontSize: 12),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
+                            appointment.status.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: appointment.statusColor,
                             ),
+                            textAlign: TextAlign.center,
                           ),
                         ),
-                        
-                        // Status
-                        SizedBox(
-                          width: 100,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: appointment.statusColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: appointment.statusColor),
-                            ),
-                            child: Text(
-                              appointment.status.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: appointment.statusColor,
+                      ),
+                      
+                      // Actions - Two buttons side by side
+                      SizedBox(
+                        width: 180,
+                        child: Row(
+                          children: [
+                            // Medical History Button
+                            ElevatedButton.icon(
+                              onPressed: () => _handlePatientAction(appointment, 'medical-history'),
+                              icon: const Icon(Icons.history, size: 12),
+                              label: const Text('History'),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                backgroundColor: Colors.blue[50],
+                                foregroundColor: Colors.blue,
+                                textStyle: const TextStyle(fontSize: 11),
+                                minimumSize: Size.zero,
                               ),
-                              textAlign: TextAlign.center,
                             ),
-                          ),
-                        ),
-                        
-                        // Actions
-                        SizedBox(
-                          width: 100,
-                          child: ElevatedButton(
-                            onPressed: () => _handlePatientSelect(appointment),
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white,
-                              textStyle: const TextStyle(fontSize: 11),
+                            const SizedBox(width: 8),
+                            
+                            // Anaesthesia Management Button
+                            ElevatedButton.icon(
+                              onPressed: () => _handlePatientAction(appointment, 'anaesthesia-management'),
+                              icon: const Icon(Icons.medical_services, size: 12),
+                              label: const Text('Anaesthesia'),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                backgroundColor: Colors.green[50],
+                                foregroundColor: Colors.green[700],
+                                textStyle: const TextStyle(fontSize: 11),
+                                minimumSize: Size.zero,
+                              ),
                             ),
-                            child: const Text('View Details'),
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               );
